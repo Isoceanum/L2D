@@ -1,5 +1,2 @@
-
-
-
 REWARD_FUNCTIONS = "baseline"
 TIMESTEPS = 500_000

@@ -510,7 +510,7 @@ class Learn2Drive(gym.Env, EzPickle):
             color = [int(c) for c in color]
             self._draw_colored_polygon(self.surf, poly, color, zoom, translation, angle)
             
-        self.l2d_render_center_line_old(zoom, translation, angle)
+        self.l2d_render_center_line(zoom, translation, angle)
             
     def _draw_colored_polygon(
         self, surface, poly, color, zoom, translation, angle, clip=True
@@ -589,8 +589,8 @@ class Learn2Drive(gym.Env, EzPickle):
             "ray_front",
             "ray_l_45",
             "ray_r_45", 
-            #"ray_l_90",
-            #"ray_r_90",
+            "ray_l_90",
+            "ray_r_90",
             "speed", 
             "ang_vel",
             "steer", 
@@ -599,8 +599,8 @@ class Learn2Drive(gym.Env, EzPickle):
         ]
 
         # Logical grouping
-        rays = signal_names[0:3]
-        controls = signal_names[3:8]
+        rays = signal_names[0:5]
+        controls = signal_names[5:8]
 
         # Column x-positions
         col_rays = W - 360
@@ -616,7 +616,7 @@ class Learn2Drive(gym.Env, EzPickle):
             self.surf.blit(label, (col_rays, start_y + i * spacing))
 
         for i, name in enumerate(controls):
-            value = obs[i + 3]
+            value = obs[i + 5]
             label = font.render(f"{name}: {value:.2f}", True, (255, 255, 255))
             self.surf.blit(label, (col_ctrl, start_y + i * spacing))
 
@@ -627,8 +627,8 @@ class Learn2Drive(gym.Env, EzPickle):
         obs.append(self.car.l2d_rays["front"])
         obs.append(self.car.l2d_rays["left_45"])
         obs.append(self.car.l2d_rays["right_45"])
-        #obs.append(self.car.l2d_rays["left_90"])
-        #obs.append(self.car.l2d_rays["right_90"])
+        obs.append(self.car.l2d_rays["left_90"])
+        obs.append(self.car.l2d_rays["right_90"])
 
         # 6: Speed (magnitude of linear velocity)
         speed = np.linalg.norm(self.car.hull.linearVelocity)
@@ -703,23 +703,8 @@ class Learn2Drive(gym.Env, EzPickle):
             # Add the barrier to the visual rendering list
             self.road_poly.append((barrier_vertices, barrier_body.color))
                 
+
     def l2d_render_center_line(self, zoom, translation, angle):
-        """Draw a fast solid centerline using short segments"""
-        line_color = (255, 255, 0)  # Yellow like real roads
-
-        for i in range(1, len(self.track)):
-            x1, y1 = self.track[i - 1][2:4]
-            x2, y2 = self.track[i][2:4]
-
-            p1 = pygame.math.Vector2((x1, y1)).rotate_rad(angle)
-            p2 = pygame.math.Vector2((x2, y2)).rotate_rad(angle)
-
-            p1 = (p1[0] * zoom + translation[0], p1[1] * zoom + translation[1])
-            p2 = (p2[0] * zoom + translation[0], p2[1] * zoom + translation[1])
-
-            pygame.draw.line(self.surf, line_color, p1, p2, 2)
-    
-    def l2d_render_center_line_old(self, zoom, translation, angle):
         """Draw a dashed yellow centerline over the track"""
         dash_color = (255, 255, 0)  # Yellow like real roads
         dash_length = 10  # pixels

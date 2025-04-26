@@ -130,8 +130,8 @@ class Car:
             "front": 0.0,
             "left_45": 0.0,
             "right_45": 0.0,
-            #"left_90": 0.0,
-            #"right_90": 0.0,
+            "left_90": 0.0,
+            "right_90": 0.0,
         }
 
     def gas(self, gas):
@@ -280,9 +280,7 @@ class Car:
                 drag_force = -1.0 * np.array(self.hull.linearVelocity)
                 self.hull.ApplyForceToCenter(drag_force, wake=True)   
     
-            
-            
-            
+                
     def _get_transformed_path(self, fixture, angle, zoom, translation):
         import pygame.draw
         trans = fixture.body.transform
@@ -399,8 +397,8 @@ class Car:
             "front": 0.0,
             "left_45": math.radians(45),
             "right_45": math.radians(-45),
-            #"left_90": math.radians(90),
-            #"right_90": math.radians(-90),
+            "left_90": math.radians(90),
+            "right_90": math.radians(-90),
         }
 
         for label, offset_rad in ray_angles.items():
@@ -447,8 +445,8 @@ class Car:
             "front": 0.0,
             "left_45": math.radians(45),
             "right_45": math.radians(-45),
-            #"left_90": math.radians(90),
-            #"right_90": math.radians(-90),
+            "left_90": math.radians(90),
+            "right_90": math.radians(-90),
         }
 
         for label, offset_rad in ray_angles.items():
@@ -462,6 +460,13 @@ class Car:
 
             # Cast and store
             distance = self.l2d_cast_ray(center, direction, L2D_RAY_LENGTH)
+            
+            # --- Add noise ---
+            #distance += np.random.normal(0, L2D_RAY_NOISE_STD_DEV)
+
+            # --- Round to lower resolution ---
+            distance = round(distance, L2D_RAY_ROUND_DIGITS)  # 1 decimal precision
+            
             self.l2d_rays[label] = distance
             
     def l2d_cast_ray(self, start, direction, length):

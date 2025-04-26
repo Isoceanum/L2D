@@ -1,0 +1,1 @@
+New experiment: side rays active, noise=0.5m, rounding=1 decimal, new reward function with steering penalty.

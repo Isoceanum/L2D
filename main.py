@@ -34,7 +34,7 @@ env = make_vec_env(
 model = PPO(
     policy="MlpPolicy",
     env=env,
-    verbose=1,
+    verbose=0,
     n_steps=1024,
     batch_size=256,
     device="cuda",  # Will fall back to CPU if not available
@@ -55,6 +55,6 @@ model.save(model_path)
 # --- Evaluate ---
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5)
 print("✅ Training complete.")
-print(f"⏱️  Training time: {elapsed:.1f}s")
+print(f"⏱️  Training time: {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
 print(f"📈 Mean reward: {mean_reward:.1f} ± {std_reward:.1f}")
 print(f"💾 Saved to: {model_path}")

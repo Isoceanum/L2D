@@ -55,17 +55,17 @@ BORDER_MIN_COUNT = 4
 GRASS_DIM = PLAYFIELD / 20.0
 MAX_SHAPE_DIM = (max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) * ZOOM * SCALE)
 
-
 # --- Car Custom config ---
 STEERING_INERTIA = 0.9
 
 # --- L2D Custome configs ---
 L2D_CATEGORY_WALL = 0x0002
 L2D_CATEGORY_CAR  = 0x0004
+
+L2D_RAY_NOISE_STD_DEV = 0.3
+L2D_RAY_ROUND_DIGITS = 1
 L2D_RAY_LENGTH = 20.0  # Max raycast length in meters
-L2D_OBSERVATION_SIZE = 8
-
-
+L2D_OBSERVATION_SIZE = 10
 
 # --- L2D Reward Weights ---
 L2D_SPEED_REWARD_WEIGHT = 0.1     # Reward per m/s of forward velocity
