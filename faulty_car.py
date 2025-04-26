@@ -177,8 +177,6 @@ class Car:
                 delta = self.target_steer - w.steer
                 w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt)
                 
-        
-        
         x, y = self.hull.position  # Updated position after physics step
         
         for w in self.wheels:
