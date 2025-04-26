@@ -56,7 +56,9 @@ GRASS_DIM = PLAYFIELD / 20.0
 MAX_SHAPE_DIM = (max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) * ZOOM * SCALE)
 
 # --- Car Custom config ---
-STEERING_INERTIA = 0.9
+STEERING_INERTIA = 1
+FIXED_THROTTLE = 0.1
+THROTTLE_BRAKE_RATIO = None #0.2  # Ratio of throttle to brake
 
 # --- L2D Custome configs ---
 L2D_CATEGORY_WALL = 0x0002

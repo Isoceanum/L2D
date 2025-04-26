@@ -358,8 +358,14 @@ class Learn2Drive(gym.Env, EzPickle):
             if self.continuous:
                 action = action.astype(np.float64)
                 self.car.steer(-action[0])
+                
+                if THROTTLE_BRAKE_RATIO is not None:
+                    action[1] = 0.1
+                    action[2] = 0.1 * THROTTLE_BRAKE_RATIO
+                
                 self.car.gas(action[1])
                 self.car.brake(action[2])
+                
             else:
                 if not self.action_space.contains(action):
                     raise InvalidAction(
