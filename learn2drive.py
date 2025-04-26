@@ -7,17 +7,20 @@ import numpy as np
 
 import gymnasium as gym
 from gymnasium import spaces
+
 from faulty_car import Car
 from gymnasium.error import DependencyNotInstalled, InvalidAction
 from gymnasium.utils import EzPickle
 
 from rewards import l2d_calculate_step_reward
 from constants import *
+from config import *
+from friction_detector import FrictionDetector
 
 
 try:
     import Box2D
-    from Box2D.b2 import contactListener, fixtureDef, polygonShape
+    from Box2D.b2 import fixtureDef, polygonShape
 except ImportError as e:
     raise DependencyNotInstalled(
         'Box2D is not installed, you can install it by run `pip install swig` followed by `pip install "gymnasium[box2d]"`'
@@ -34,174 +37,7 @@ except ImportError as e:
     ) from e
 
 
-STATE_W = 96  # less than Atari 160x192
-STATE_H = 96
-VIDEO_W = 600
-VIDEO_H = 400
-WINDOW_W = 1000
-WINDOW_H = 800
-
-SCALE = 6.0  # Track scale
-TRACK_RAD = 900 / SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD = 2000 / SCALE  # Game over boundary
-FPS = 50  # Frames per second
-ZOOM = 2.7  # Camera zoom
-ZOOM_FOLLOW = True  # Set to False for fixed view (don't use zoom)
-
-
-TRACK_DETAIL_STEP = 21 / SCALE
-TRACK_TURN_RATE = 0.31
-TRACK_WIDTH = 40 / SCALE
-BORDER = 8 / SCALE
-BORDER_MIN_COUNT = 4
-GRASS_DIM = PLAYFIELD / 20.0
-MAX_SHAPE_DIM = (
-    max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) * ZOOM * SCALE
-)
-
-class FrictionDetector(contactListener):
-    def __init__(self, env, lap_complete_percent):
-        contactListener.__init__(self)
-        self.env = env
-        self.lap_complete_percent = lap_complete_percent
-
-    def BeginContact(self, contact):
-        self._contact(contact, True)
-
-    def EndContact(self, contact):
-        self._contact(contact, False)
-
-    def _contact(self, contact, begin):
-        tile = None
-        obj = None
-        u1 = contact.fixtureA.body.userData
-        u2 = contact.fixtureB.body.userData
-        if u1 and "road_friction" in u1.__dict__:
-            tile = u1
-            obj = u2
-        if u2 and "road_friction" in u2.__dict__:
-            tile = u2
-            obj = u1
-        if not tile:
-            return
-
-        # inherit tile color from env
-        tile.color[:] = self.env.road_color
-        if not obj or "tiles" not in obj.__dict__:
-            return
-        if begin:
-            obj.tiles.add(tile)
-            if not tile.road_visited:
-                tile.road_visited = True
-                #self.env.reward += 1000.0 / len(self.env.track)
-                self.env.tile_visited_count += 1
-
-                # Lap is considered completed if enough % of the track was covered
-                if (
-                    tile.idx == 0
-                    and self.env.tile_visited_count / len(self.env.track)
-                    > self.lap_complete_percent
-                ):
-                    self.env.new_lap = True
-        else:
-            obj.tiles.remove(tile)
-
-
 class Learn2Drive(gym.Env, EzPickle):
-    """
-    ## Description
-    The easiest control task to learn from pixels - a top-down
-    racing environment. The generated track is random every episode.
-
-    Some indicators are shown at the bottom of the window along with the
-    state RGB buffer. From left to right: true speed, four ABS sensors,
-    steering wheel position, and gyroscope.
-    To play yourself (it's rather fast for humans), type:
-    ```shell
-    python gymnasium/envs/box2d/car_racing.py
-    ```
-    Remember: it's a powerful rear-wheel drive car - don't press the accelerator
-    and turn at the same time.
-
-    ## Action Space
-    If continuous there are 3 actions :
-    - 0: steering, -1 is full left, +1 is full right
-    - 1: gas
-    - 2: braking
-
-    If discrete there are 5 actions:
-    - 0: do nothing
-    - 1: steer left
-    - 2: steer right
-    - 3: gas
-    - 4: brake
-
-    ## Observation Space
-
-    A top-down 96x96 RGB image of the car and race track.
-
-    ## Rewards
-    The reward is -0.1 every frame and +1000/N for every track tile visited, where N is the total number of tiles
-     visited in the track. For example, if you have finished in 732 frames, your reward is 1000 - 0.1*732 = 926.8 points.
-
-    ## Starting State
-    The car starts at rest in the center of the road.
-
-    ## Episode Termination
-    The episode finishes when all the tiles are visited. The car can also go outside the playfield -
-     that is, far off the track, in which case it will receive -100 reward and die.
-
-    ## Arguments
-
-    ```python
-    >>> import gymnasium as gym
-    >>> env = gym.make("CarRacing-v3", render_mode="rgb_array", lap_complete_percent=0.95, domain_randomize=False, continuous=False)
-    >>> env
-    <TimeLimit<OrderEnforcing<PassiveEnvChecker<CarRacing<CarRacing-v3>>>>>
-
-    ```
-
-    * `lap_complete_percent=0.95` dictates the percentage of tiles that must be visited by
-     the agent before a lap is considered complete.
-
-    * `domain_randomize=False` enables the domain randomized variant of the environment.
-     In this scenario, the background and track colours are different on every reset.
-
-    * `continuous=True` converts the environment to use discrete action space.
-     The discrete action space has 5 actions: [do nothing, left, right, gas, brake].
-
-    ## Reset Arguments
-
-    Passing the option `options["randomize"] = True` will change the current colour of the environment on demand.
-    Correspondingly, passing the option `options["randomize"] = False` will not change the current colour of the environment.
-    `domain_randomize` must be `True` on init for this argument to work.
-
-    ```python
-    >>> import gymnasium as gym
-    >>> env = gym.make("CarRacing-v3", domain_randomize=True)
-
-    # normal reset, this changes the colour scheme by default
-    >>> obs, _ = env.reset()
-
-    # reset with colour scheme change
-    >>> randomize_obs, _ = env.reset(options={"randomize": True})
-
-    # reset with no colour scheme change
-    >>> non_random_obs, _ = env.reset(options={"randomize": False})
-
-    ```
-
-    ## Version History
-    - v2: Change truncation to termination when finishing the lap (1.0.0)
-    - v1: Change track completion logic and add domain randomization (0.24.0)
-    - v0: Original version
-
-    ## References
-    - Chris Campbell (2014), http://www.iforce2d.net/b2dtut/top-down-car.
-
-    ## Credits
-    Created by Oleg Klimov
-    """
 
     metadata = {
         "render_modes": [
@@ -219,7 +55,6 @@ class Learn2Drive(gym.Env, EzPickle):
         lap_complete_percent: float = 0.95,
         domain_randomize: bool = False,
         continuous: bool = True,
-	    l2d_reward_mode="baseline"
     ):
         EzPickle.__init__(
             self,
@@ -254,7 +89,6 @@ class Learn2Drive(gym.Env, EzPickle):
         
         # Custome props for l2d
         self.l2d_walls = []
-        self.l2d_reward_mode = l2d_reward_mode
         self.l2d_last_segment_idx = 0
 
         # This will throw a warning in tests/envs/test_envs in utils/env_checker.py as the space is not symmetric
@@ -542,7 +376,7 @@ class Learn2Drive(gym.Env, EzPickle):
 
         #self.state = self._render("state_pixels")
         self.state = self.l2d_get_observation()
-        step_reward = l2d_calculate_step_reward(self.l2d_reward_mode, self, action)
+        step_reward = l2d_calculate_step_reward(REWARD_FUNCTIONS, self, action)
         
         terminated = False
         truncated = False
@@ -565,7 +399,6 @@ class Learn2Drive(gym.Env, EzPickle):
         if self.render_mode == "human":
             self.render()
         return self.state, step_reward, terminated, truncated, info
-
 
     def render(self):
         if self.render_mode is None:
@@ -679,8 +512,6 @@ class Learn2Drive(gym.Env, EzPickle):
             
         self.l2d_render_center_line_old(zoom, translation, angle)
             
-          
-
     def _draw_colored_polygon(
         self, surface, poly, color, zoom, translation, angle, clip=True
     ):
@@ -742,7 +573,6 @@ class Learn2Drive(gym.Env, EzPickle):
 
         return step_reward
     
-
     def l2d_render_indicators(self, W, H):
         import pygame
         s = W / 40.0
@@ -756,13 +586,21 @@ class Learn2Drive(gym.Env, EzPickle):
         obs = self.l2d_get_observation()
 
         signal_names = [
-            "ray_front", "ray_l_45", "ray_r_45", "ray_l_90", "ray_r_90",
-            "speed", "ang_vel", "steer", "gas", "brake",
+            "ray_front",
+            "ray_l_45",
+            "ray_r_45", 
+            #"ray_l_90",
+            #"ray_r_90",
+            "speed", 
+            "ang_vel",
+            "steer", 
+            "gas", 
+            "brake",
         ]
 
         # Logical grouping
-        rays = signal_names[0:5]
-        controls = signal_names[5:10]
+        rays = signal_names[0:3]
+        controls = signal_names[3:8]
 
         # Column x-positions
         col_rays = W - 360
@@ -778,10 +616,9 @@ class Learn2Drive(gym.Env, EzPickle):
             self.surf.blit(label, (col_rays, start_y + i * spacing))
 
         for i, name in enumerate(controls):
-            value = obs[i + 5]
+            value = obs[i + 3]
             label = font.render(f"{name}: {value:.2f}", True, (255, 255, 255))
             self.surf.blit(label, (col_ctrl, start_y + i * spacing))
-
 
     def l2d_get_observation(self):
         obs = []
@@ -790,8 +627,6 @@ class Learn2Drive(gym.Env, EzPickle):
         obs.append(self.car.l2d_rays["front"])
         obs.append(self.car.l2d_rays["left_45"])
         obs.append(self.car.l2d_rays["right_45"])
-        obs.append(0.0)
-        obs.append(0.0)
         #obs.append(self.car.l2d_rays["left_90"])
         #obs.append(self.car.l2d_rays["right_90"])
 
@@ -867,8 +702,7 @@ class Learn2Drive(gym.Env, EzPickle):
 
             # Add the barrier to the visual rendering list
             self.road_poly.append((barrier_vertices, barrier_body.color))
-            
-                 
+                
     def l2d_render_center_line(self, zoom, translation, angle):
         """Draw a fast solid centerline using short segments"""
         line_color = (255, 255, 0)  # Yellow like real roads
@@ -885,7 +719,6 @@ class Learn2Drive(gym.Env, EzPickle):
 
             pygame.draw.line(self.surf, line_color, p1, p2, 2)
     
-        
     def l2d_render_center_line_old(self, zoom, translation, angle):
         """Draw a dashed yellow centerline over the track"""
         dash_color = (255, 255, 0)  # Yellow like real roads
@@ -913,61 +746,4 @@ class Learn2Drive(gym.Env, EzPickle):
                 start = pygame.math.Vector2(p1) + direction * (j * (dash_length + gap_length))
                 end = start + direction * dash_length
                 pygame.draw.line(self.surf, dash_color, start, end, 2)
-
-
-
-if __name__ == "__main__":
-    a = np.array([0.0, 0.0, 0.0])
-
-    def register_input():
-        global quit, restart
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    a[0] = -1.0
-                if event.key == pygame.K_RIGHT:
-                    a[0] = +1.0
-                if event.key == pygame.K_UP:
-                    a[1] = +1.0
-                if event.key == pygame.K_DOWN:
-                    a[2] = +0.8  # set 1.0 for wheels to block to zero rotation
-                if event.key == pygame.K_RETURN:
-                    restart = True
-                if event.key == pygame.K_ESCAPE:
-                    quit = True
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
-                    a[0] = 0
-                if event.key == pygame.K_RIGHT:
-                    a[0] = 0
-                if event.key == pygame.K_UP:
-                    a[1] = 0
-                if event.key == pygame.K_DOWN:
-                    a[2] = 0
-
-            if event.type == pygame.QUIT:
-                quit = True
-
-    env = Learn2Drive(render_mode="human")
-
-    quit = False
-    while not quit:
-        env.reset()
-        total_reward = 0.0
-        steps = 0
-        restart = False
-        while True:
-            register_input()
-            s, r, terminated, truncated, info = env.step(a)
-            total_reward += r
-            if steps % 200 == 0 or terminated or truncated:
-                print("\naction " + str([f"{x:+0.2f}" for x in a]))
-                print(f"step {steps} total_reward {total_reward:+0.2f}")
-            steps += 1
-            if terminated or truncated or restart or quit:
-                break
-    env.close()
-
-
 

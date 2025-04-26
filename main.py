@@ -6,6 +6,8 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
 
+from config import *
+
 # Register your custom vectorized env
 gym.envs.registration.register(
     id="L2D-v0",
@@ -17,7 +19,6 @@ gym.envs.registration.register(
 # --- CLI args ---
 parser = argparse.ArgumentParser()
 parser.add_argument("--output_dir", type=str, required=True)
-parser.add_argument("--timesteps", type=int, default=500_000)
 args = parser.parse_args()
 
 # --- Ensure output dir exists ---
@@ -27,7 +28,6 @@ os.makedirs(args.output_dir, exist_ok=True)
 env = make_vec_env(
 	"L2D-v0",
 	n_envs=1, # Use 1 env for now to debug behavior
-	env_kwargs={"l2d_reward_mode": "reward_align_speed"}
 )
 
 # --- Set up PPO model for vector obs ---
@@ -45,7 +45,7 @@ print(f"🚀 Using device: {model.device}")
 
 # --- Train ---
 start = time.time()
-model.learn(total_timesteps=args.timesteps)
+model.learn(total_timesteps=TIMESTEPS, progress_bar=True)
 elapsed = time.time() - start
 
 # --- Save model ---

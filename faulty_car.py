@@ -17,7 +17,7 @@ from gymnasium.error import DependencyNotInstalled
 
 from ray_cast_callback import RayCastCallback
 
-from constants import L2D_RAY_LENGTH
+from constants import *
 
 try:
     from Box2D.b2 import fixtureDef, polygonShape, revoluteJointDef, circleShape
@@ -25,33 +25,6 @@ except ImportError as e:
     raise DependencyNotInstalled(
         'Box2D is not installed, you can install it by run `pip install swig` followed by `pip install "gymnasium[box2d]"`'
     ) from e
-
-
-SIZE = 0.02
-ENGINE_POWER = 100000000 * SIZE * SIZE
-WHEEL_MOMENT_OF_INERTIA = 4000 * SIZE * SIZE
-FRICTION_LIMIT = (
-    1000000 * SIZE * SIZE
-)  # friction ~= mass ~= size^2 (calculated implicitly using density)
-WHEEL_R = 27
-WHEEL_W = 14
-WHEELPOS = [(-55, +80), (+55, +80), (-55, -82), (+55, -82)]
-HULL_POLY1 = [(-60, +130), (+60, +130), (+60, +110), (-60, +110)]
-HULL_POLY2 = [(-15, +120), (+15, +120), (+20, +20), (-20, 20)]
-HULL_POLY3 = [
-    (+25, +20),
-    (+50, -10),
-    (+50, -40),
-    (+20, -90),
-    (-20, -90),
-    (-50, -40),
-    (-50, -10),
-    (-25, +20),
-]
-HULL_POLY4 = [(-50, -120), (+50, -120), (+50, -90), (-50, -90)]
-WHEEL_COLOR = (0, 0, 0)
-WHEEL_WHITE = (77, 77, 77)
-MUD_COLOR = (102, 102, 0)
 
 
 class Car:
@@ -155,8 +128,8 @@ class Car:
             "front": 0.0,
             "left_45": 0.0,
             "right_45": 0.0,
-            "left_90": 0.0,
-            "right_90": 0.0,
+            #"left_90": 0.0,
+            #"right_90": 0.0,
         }
 
     def gas(self, gas):
@@ -431,8 +404,8 @@ class Car:
             "front": 0.0,
             "left_45": math.radians(45),
             "right_45": math.radians(-45),
-            "left_90": math.radians(90),
-            "right_90": math.radians(-90),
+            #"left_90": math.radians(90),
+            #"right_90": math.radians(-90),
         }
 
         for label, offset_rad in ray_angles.items():
@@ -479,8 +452,8 @@ class Car:
             "front": 0.0,
             "left_45": math.radians(45),
             "right_45": math.radians(-45),
-            "left_90": math.radians(90),
-            "right_90": math.radians(-90),
+            #"left_90": math.radians(90),
+            #"right_90": math.radians(-90),
         }
 
         for label, offset_rad in ray_angles.items():

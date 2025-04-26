@@ -232,11 +232,11 @@ def _reward_align_speed(env, action) -> float:
 
     # Speed reward (scaled down)
     speed = np.linalg.norm(env.car.hull.linearVelocity)
-    speed_reward = 0.05 * speed
+    speed_reward = L2D_SPEED_REWARD_WEIGHT * speed
     
     step_reward += speed_reward * alignment_score 
     
-    env.reward += alignment_score
+    env.reward += step_reward
     
     return step_reward
 
