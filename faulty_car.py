@@ -123,6 +123,7 @@ class Car:
         
 
         self.particles = []
+        self.target_steer = 0.0  # what the user/agent wants
         
         self.l2d_rays = {
             "front": 0.0,
@@ -160,8 +161,11 @@ class Car:
         Args:
             s (-1..1): target position, it takes time to rotate steering wheel from side-to-side
         """
-        self.wheels[0].steer = s
-        self.wheels[1].steer = s
+        
+        """Control: set a target steering value"""
+        self.target_steer = np.clip(s, -1.0, 1.0)
+        #self.wheels[0].steer = s
+        #self.wheels[1].steer = s
 
     def step(self, dt):    
         self.l2d_cast_rays()  
@@ -179,11 +183,13 @@ class Car:
             w.joint.motorSpeed = dir * min(50.0 * val, 3.0)
         """
         
-        # old code 
+        
+        for i, w in enumerate(self.wheels):
+            if i in [0, 1]:  # Only front wheels should steer
+                delta = self.target_steer - w.steer
+                w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt)
         
         
-        
-    
         x, y = self.hull.position  # Updated position after physics step
         
         for w in self.wheels:
