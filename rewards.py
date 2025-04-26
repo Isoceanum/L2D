@@ -17,6 +17,8 @@ def l2d_calculate_step_reward (mode, env, action) -> float:
             return _reward_center_track_projection(env, action)
         case "reward_align_speed":
             return _reward_align_speed(env, action)
+        case "reward_align_speed_with_smoothness":
+            return _reward_align_speed_with_smoothness(env, action)
         case _:
             raise ValueError(f"Unknown reward function named: {mode}")
 
@@ -240,3 +242,73 @@ def _reward_align_speed(env, action) -> float:
     
     return step_reward
 
+def _reward_align_speed_with_smoothness(env, action) -> float:
+    if action is None:
+        return 0.0
+
+    step_reward = 0.0
+    # Time penalty
+    step_reward -= L2D_TIME_PENALTY
+    car_pos = np.array(env.car.hull.position)
+    car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
+    car_right = np.array([-car_heading[1], car_heading[0]])  # 90 degrees to the right
+
+    min_distance = float("inf")
+    signed_offset = 0.0
+    
+    idx0 = env.l2d_last_segment_idx
+    window = 3  # try segments 4 from last closest
+    
+    min_i = max(1, idx0 - window)
+    max_i = min(len(env.track), idx0 + window)
+
+    for i in range(min_i, max_i):
+        x1, y1 = env.track[i - 1][2:4]
+        x2, y2 = env.track[i][2:4]
+        a = np.array([x1, y1])
+        b = np.array([x2, y2])
+        ab = b - a
+        ap = car_pos - a
+
+        ab_len_squared = np.dot(ab, ab)
+        if ab_len_squared == 0:
+            continue
+
+        t = np.clip(np.dot(ap, ab) / ab_len_squared, 0.0, 1.0)
+        closest_point = a + t * ab
+        diff = car_pos - closest_point
+        dist = np.linalg.norm(diff)
+
+        if dist < min_distance:
+            min_distance = dist
+            signed_offset = np.dot(diff, car_right)  # positive if to the right 
+            env.l2d_last_segment_idx = i  # update the cache
+            
+    max_offset = 40 / 6.0  # full width in meters (same as TRACK_WIDTH)
+
+    desired_zone = max_offset * L2D_ALIGNMENT_ZONE_RATIO
+    normalized_offset = abs(signed_offset) / desired_zone
+    alignment_reward = np.clip(1.0 - normalized_offset, -1.0, 1.0) * L2D_CENTER_REWARD_WEIGHT
+
+    # Speed reward (scaled down)
+    speed = np.linalg.norm(env.car.hull.linearVelocity)
+    speed_reward = L2D_SPEED_REWARD_WEIGHT * speed
+    
+    
+    
+    # jittery steering penalty
+    
+    current_target_steer = env.car.target_steer
+    prev_target_steer = env.car.prev_steer
+    
+    jitter_penalty = abs(current_target_steer - prev_target_steer) * STEERING_JITTER_WEIGHT
+        
+    step_reward += speed_reward * alignment_reward - jitter_penalty
+    
+    
+    
+    
+    env.reward += step_reward
+    
+    return step_reward
+    

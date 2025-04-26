@@ -5,10 +5,10 @@ import math
 
 # --- Faulty car Constants ---
 SIZE = 0.02
-ENGINE_POWER = 100000000 * SIZE * SIZE
+ENGINE_POWER = 100_000_000 * SIZE * SIZE
 WHEEL_MOMENT_OF_INERTIA = 4000 * SIZE * SIZE
 FRICTION_LIMIT = (
-    1000000 * SIZE * SIZE
+    100_000_0 * SIZE * SIZE
 )  # friction ~= mass ~= size^2 (calculated implicitly using density)
 WHEEL_R = 27
 WHEEL_W = 14
@@ -57,7 +57,7 @@ MAX_SHAPE_DIM = (max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) *
 
 
 # --- Car Custom config ---
-STEERING_INERTIA = 3.0
+STEERING_INERTIA = 0.9
 
 # --- L2D Custome configs ---
 L2D_CATEGORY_WALL = 0x0002
@@ -72,6 +72,7 @@ L2D_SPEED_REWARD_WEIGHT = 0.1     # Reward per m/s of forward velocity
 L2D_TIME_PENALTY = 0.1            # Constant penalty per step (time cost)
 L2D_CENTERING_REWARD_WEIGHT = 0.5   # Centering reward weight
 L2D_WALL_PROXIMITY_PENALTY_WEIGHT = 1 # Penalty for being close to walls
+STEERING_JITTER_WEIGHT = 5.0 # Penalty for steering jitter
 
 
 L2D_CENTER_REWARD_WEIGHT = 1   # Centering reward weight

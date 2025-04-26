@@ -1,5 +1,5 @@
 
 
 
-REWARD_FUNCTIONS = "reward_align_speed"
+REWARD_FUNCTIONS = "baseline"
 TIMESTEPS = 500_000

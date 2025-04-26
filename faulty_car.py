@@ -124,6 +124,7 @@ class Car:
 
         self.particles = []
         self.target_steer = 0.0  # what the user/agent wants
+        self.prev_steer = 0.0
         
         self.l2d_rays = {
             "front": 0.0,
@@ -163,31 +164,19 @@ class Car:
         """
         
         """Control: set a target steering value"""
-        self.target_steer = np.clip(s, -1.0, 1.0)
+        self.prev_steer = self.target_steer
+        self.target_steer = s
         #self.wheels[0].steer = s
         #self.wheels[1].steer = s
 
     def step(self, dt):    
         self.l2d_cast_rays()  
-        """       
-        for i, w in enumerate(self.wheels):
-            if i == 2:
-                w.omega *= 0.3 # Simulate a locked wheel by reducing its angular velocity
-                w.phase = 0.0 # Lock the wheel phase visually
-                w.color = (1.0, 0.0, 0.0)  # Red to indicate fault
-                continue
-
-            # Normal wheel logic
-            dir = np.sign(w.steer - w.joint.angle)
-            val = abs(w.steer - w.joint.angle)
-            w.joint.motorSpeed = dir * min(50.0 * val, 3.0)
-        """
-        
-        
+ 
         for i, w in enumerate(self.wheels):
             if i in [0, 1]:  # Only front wheels should steer
                 delta = self.target_steer - w.steer
                 w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt)
+                
         
         
         x, y = self.hull.position  # Updated position after physics step
