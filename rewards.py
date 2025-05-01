@@ -186,8 +186,9 @@ def _reward_align_speed(env, action) -> float:
         return 0.0
 
     step_reward = 0.0
-    # Time penalty
+    # Time penalty    
     step_reward -= L2D_TIME_PENALTY
+    
     car_pos = np.array(env.car.hull.position)
     car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
     car_right = np.array([-car_heading[1], car_heading[0]])  # 90 degrees to the right
@@ -196,7 +197,7 @@ def _reward_align_speed(env, action) -> float:
     signed_offset = 0.0
     
     idx0 = env.l2d_last_segment_idx
-    window = 3  # try segments 4 from last closest
+    window = 10  # try segments 4 from last closest
     
     min_i = max(1, idx0 - window)
     max_i = min(len(env.track), idx0 + window)
@@ -228,14 +229,20 @@ def _reward_align_speed(env, action) -> float:
     desired_zone = max_offset * L2D_ALIGNMENT_ZONE_RATIO
     normalized_offset = abs(signed_offset) / desired_zone
     alignment_score = np.clip(1.0 - normalized_offset, -1.0, 1.0) * L2D_CENTER_REWARD_WEIGHT
+    
+    print("alignment_score: ", alignment_score)
+    
+    return 0.0
 
     # Speed reward (scaled down)
     speed = np.linalg.norm(env.car.hull.linearVelocity)
     speed_reward = 0.05 * speed
     
-    step_reward += speed_reward * alignment_score 
     
-    env.reward += alignment_score
+    step_reward += alignment_score 
+    
+    
+    #env.reward += alignment_score
     
     return step_reward
 
@@ -309,3 +316,21 @@ def _reward_align_speed_with_smoothness(env, action) -> float:
 
     return step_reward
     
+    
+def _reward_center_track(env, action) -> float:
+    
+    if action is None:
+        return 0.0
+    
+    step_reward = 0.0
+
+    # 1. Apply time penalty
+    env.reward -= L2D_TIME_PENALTY
+    
+    # Indirectly add reward from friction detector for discovering new tiles
+    step_reward = env.reward - env.prev_reward
+    env.prev_reward = env.reward
+    
+    
+    return step_reward
+        

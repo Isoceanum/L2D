@@ -1,2 +1,2 @@
-REWARD_FUNCTIONS = "reward_align_speed"
+REWARD_FUNCTIONS = "center_track_projection"
 TIMESTEPS = 500_000
