@@ -1,1 +1,6 @@
-New experiment: side rays active, noise=0.5m, rounding=1 decimal, new reward function with steering penalty.
+Run calculating step reward as a function of Speed,
+time penalty and how centerd the agent is on the tracks. 
+Also reintroduced the checkpoint rewards system to encourage 
+the agent to explore as much as possible of the map.
+
+\n

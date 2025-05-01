@@ -39,8 +39,8 @@ class FrictionDetector(contactListener):
             if not tile.road_visited:
                 tile.road_visited = True
                 
-                if REWARD_FUNCTIONS == "baseline":
-                    self.env.reward += 1000.0 / len(self.env.track)
+                #if REWARD_FUNCTIONS == "baseline":
+                self.env.reward += 1000.0 / len(self.env.track)
                 self.env.tile_visited_count += 1
 
                 # Lap is considered completed if enough % of the track was covered

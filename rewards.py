@@ -291,18 +291,13 @@ def _reward_align_speed_with_smoothness(env, action) -> float:
     speed = np.linalg.norm(env.car.hull.linearVelocity)
     speed_reward = L2D_SPEED_REWARD_WEIGHT * speed
     
-    
-    
     # jittery steering penalty
-    
     current_target_steer = env.car.target_steer
     prev_target_steer = env.car.prev_steer
     
     jitter_penalty = abs(current_target_steer - prev_target_steer) * STEERING_JITTER_WEIGHT
         
     step_reward += speed_reward * alignment_reward - jitter_penalty
-    
-    
     
     
     env.reward += step_reward

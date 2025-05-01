@@ -74,7 +74,7 @@ L2D_SPEED_REWARD_WEIGHT = 0.05     # Reward per m/s of forward velocity
 L2D_TIME_PENALTY = 0.1            # Constant penalty per step (time cost)
 L2D_CENTERING_REWARD_WEIGHT = 0.5   # Centering reward weight
 L2D_WALL_PROXIMITY_PENALTY_WEIGHT = 1 # Penalty for being close to walls
-STEERING_JITTER_WEIGHT = 5.0 # Penalty for steering jitter
+STEERING_JITTER_WEIGHT = 1.0 # Penalty for steering jitter
 
 
 L2D_CENTER_REWARD_WEIGHT = 1   # Centering reward weight
