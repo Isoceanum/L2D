@@ -1,2 +1,2 @@
-REWARD_FUNCTIONS = "baseline"
-TIMESTEPS = 500_000
+REWARD_FUNCTIONS = "center_track_alignment"
+TIMESTEPS = 250_000
