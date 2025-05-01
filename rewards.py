@@ -61,7 +61,6 @@ def _reward_center_track_alignment(env, action) -> float:
             1.0 / (left + 1e-3) + 1.0 / (right + 1e-3)
         )
         step_reward -= wall_penalty
-        print("reward to add ", center_reward - wall_penalty)
          
 
     return step_reward
@@ -88,16 +87,14 @@ def _reward_wall_avoidance(env, action) -> float:
 
     wall_penalty = 0.0
     if left < WALL_THRESHOLD:
-        print(f"[Wall Penalty] left={left:.2f} < {WALL_THRESHOLD:.2f}")
+
         wall_penalty += WALL_PENALTY_SCALE * (1.0 - left / WALL_THRESHOLD)
 
     if right < WALL_THRESHOLD:
-        print(f"[Wall Penalty] right={right:.2f} < {WALL_THRESHOLD:.2f}")
         wall_penalty += WALL_PENALTY_SCALE * (1.0 - right / WALL_THRESHOLD)
 
     if wall_penalty > 0:
         step_reward -= wall_penalty
-        print(f"[Wall Penalty] left={left:.2f}, right={right:.2f} → penalty={wall_penalty:.3f}")
 
     return step_reward
 
