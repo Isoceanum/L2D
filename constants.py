@@ -79,4 +79,3 @@ STEERING_JITTER_WEIGHT = 1.0 # Penalty for steering jitter
 
 L2D_CENTER_REWARD_WEIGHT = 1   # Centering reward weight
 L2D_ALIGNMENT_ZONE_RATIO = 0.3 # Zone within which alignment is "perfect"
-L2D_SPEED_REWARD_WEIGHT = 0.05 # Reward per m/s of forward velocity

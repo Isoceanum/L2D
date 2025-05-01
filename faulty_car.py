@@ -164,18 +164,20 @@ class Car:
         """
         
         """Control: set a target steering value"""
-        self.prev_steer = self.target_steer
-        self.target_steer = s
-        #self.wheels[0].steer = s
-        #self.wheels[1].steer = s
+        #self.prev_steer = self.target_steer
+        #self.target_steer = s
+        
+        self.wheels[0].steer = s
+        self.wheels[1].steer = s
 
     def step(self, dt):    
         self.l2d_cast_rays()  
  
+        """         
         for i, w in enumerate(self.wheels):
             if i in [0, 1]:  # Only front wheels should steer
                 delta = self.target_steer - w.steer
-                w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt)
+                w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt) """
                 
         x, y = self.hull.position  # Updated position after physics step
         
