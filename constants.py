@@ -57,7 +57,7 @@ MAX_SHAPE_DIM = (max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) *
 
 # --- Car Custom config ---
 STEERING_INERTIA = 1
-FIXED_THROTTLE = 0.1
+FIXED_THROTTLE = None
 THROTTLE_BRAKE_RATIO = None #0.2  # Ratio of throttle to brake
 
 # --- L2D Custome configs ---
