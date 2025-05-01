@@ -1,2 +1,2 @@
-REWARD_FUNCTIONS = "reward_align_speed_with_smoothness"
-TIMESTEPS = 250_000
+REWARD_FUNCTIONS = "reward_align_speed"
+TIMESTEPS = 500_000
