@@ -188,6 +188,13 @@ def _reward_align_speed(env, action) -> float:
     step_reward = 0.0
     # Time penalty
     step_reward -= L2D_TIME_PENALTY
+    
+    
+    # 2. Reward from tile discovery (via contact listener)
+    step_reward += env.reward - env.prev_reward
+    env.prev_reward = env.reward
+    
+    
     car_pos = np.array(env.car.hull.position)
     car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
     car_right = np.array([-car_heading[1], car_heading[0]])  # 90 degrees to the right
@@ -235,7 +242,7 @@ def _reward_align_speed(env, action) -> float:
     
     step_reward += speed_reward * alignment_score 
     
-    env.reward += step_reward
+    #env.reward += step_reward
     
     return step_reward
 
