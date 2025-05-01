@@ -249,7 +249,7 @@ def _reward_align_speed_with_smoothness(env, action) -> float:
     step_reward -= L2D_TIME_PENALTY
     
     # 2. Reward from tile discovery (via contact listener)
-    step_reward = env.reward - env.prev_reward
+    step_reward += env.reward - env.prev_reward
     env.prev_reward = env.reward
     
     car_pos = np.array(env.car.hull.position)
@@ -305,8 +305,6 @@ def _reward_align_speed_with_smoothness(env, action) -> float:
         
     step_reward += speed_reward * alignment_reward - jitter_penalty
     
-    
-    env.reward += step_reward
-    
+
     return step_reward
     
