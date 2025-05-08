@@ -37,7 +37,7 @@ model = PPO(
     verbose=1,
     n_steps=1024,
     batch_size=256,
-    device="cpu",  # Will fall back to CPU if not available
+    device="cuda",  # Will fall back to CPU if not available
     tensorboard_log=args.output_dir,
 )
 
