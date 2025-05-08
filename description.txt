@@ -1,6 +1,3 @@
-Run calculating step reward as a function of Speed,
-time penalty and how centerd the agent is on the tracks. 
-Also reintroduced the checkpoint rewards system to encourage 
-the agent to explore as much as possible of the map.
+Try to recreate the run from job 797751 on Wed Apr 23, that was to good
 
 \n

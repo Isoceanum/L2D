@@ -77,5 +77,5 @@ L2D_WALL_PROXIMITY_PENALTY_WEIGHT = 1 # Penalty for being close to walls
 STEERING_JITTER_WEIGHT = 1.0 # Penalty for steering jitter
 
 
-L2D_CENTER_REWARD_WEIGHT = 5   # Centering reward weight
+L2D_CENTER_REWARD_WEIGHT = 1   # Centering reward weight
 L2D_ALIGNMENT_ZONE_RATIO = 0.3 # Zone within which alignment is "perfect"

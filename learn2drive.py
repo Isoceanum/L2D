@@ -606,7 +606,7 @@ class Learn2Drive(gym.Env, EzPickle):
 
         # Logical grouping
         rays = signal_names[0:5]
-        controls = signal_names[5:8]
+        controls = signal_names[5:L2D_OBSERVATION_SIZE]
 
         # Column x-positions
         col_rays = W - 360
