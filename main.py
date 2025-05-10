@@ -12,7 +12,7 @@ from config import *
 gym.envs.registration.register(
     id="L2D-v0",
     entry_point="learn2drive:Learn2Drive",
-    max_episode_steps=1000,
+    max_episode_steps=MAX_EPISODE_STEPS,
     reward_threshold=900,
 )
 

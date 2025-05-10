@@ -15,6 +15,7 @@ import numpy as np
 
 from gymnasium.error import DependencyNotInstalled
 
+from config import *
 from ray_cast_callback import RayCastCallback
 
 from constants import *
@@ -126,6 +127,11 @@ class Car:
         self.target_steer = 0.0  # what the user/agent wants
         self.prev_steer = 0.0
         
+        self.fault_active = False
+        self.fault_location = self.fault_location = random.randint(0, 3) if FAULT_LOCATION == -1 else FAULT_LOCATION
+        
+        self.outside_track = False  # True when all wheels are on grass
+
         self.l2d_rays = {
             "front": 0.0,
             "left_45": 0.0,
@@ -172,6 +178,11 @@ class Car:
 
     def step(self, dt):    
         self.l2d_cast_rays()  
+        self.l2d_inject_fault()
+        
+        all_wheels_on_grass = True
+
+           
  
         """         
         for i, w in enumerate(self.wheels):
@@ -195,6 +206,9 @@ class Car:
                     friction_limit, FRICTION_LIMIT * tile.road_friction
                 )
                 grass = False
+                
+            if not grass:
+                all_wheels_on_grass = False
 
             # Force
             forw = w.GetWorldVector((0, 1))
@@ -279,6 +293,10 @@ class Car:
             if all(w.gas < 1e-4 for w in self.wheels[2:4]):  # rear wheels = driven
                 drag_force = -1.0 * np.array(self.hull.linearVelocity)
                 self.hull.ApplyForceToCenter(drag_force, wake=True)   
+                
+        self.outside_track = all_wheels_on_grass
+
+ 
     
                 
     def _get_transformed_path(self, fixture, angle, zoom, translation):
@@ -295,22 +313,27 @@ class Car:
     def draw(self, surface, zoom, translation, angle, draw_particles=True):
         import pygame.draw
 
+                
         if draw_particles:
             for p in self.particles:
                 poly = [pygame.math.Vector2(c).rotate_rad(angle) for c in p.poly]
                 poly = [
-                    (c[0] * zoom + translation[0], c[1] * zoom + translation[1])
-                    for c in poly
+                    (
+                        coords[0] * zoom + translation[0],
+                        coords[1] * zoom + translation[1],
+                    )
+                    for coords in poly
                 ]
-                pygame.draw.lines(surface, color=p.color, points=poly, width=2, closed=False)
-                
-                
+                pygame.draw.lines(
+                    surface, color=p.color, points=poly, width=2, closed=False
+                )
                 
         self.l2d_draw_rays(surface, zoom, translation, angle)          
         self.l2d_draw_hull(surface, zoom, translation, angle)
         self.l2d_draw_wheels(surface, zoom, translation, angle)
 
     def _create_particle(self, point1, point2, grass):
+        #print("Creating particle grass", grass)
         class Particle:
             pass
 
@@ -490,4 +513,29 @@ class Car:
     def l2d_normalize_direction(self, direction):
         length = math.sqrt(direction[0]**2 + direction[1]**2)
         return (direction[0] / length, direction[1] / length) if length != 0 else (0, 0)
+    
+    def l2d_inject_fault(self):   
+            for i, w in enumerate(self.wheels):
+                if self.fault_active and i == self.fault_location:
+                    if FAULT_TYPE == "LOCK":
+                        w.omega *= 0.1 # Simulate a locked wheel by reducing its angular velocity
+                        w.phase = 0.0 # Lock the wheel phase visually
+                        w.color = (1.0, 0.0, 0.0)  # Red to indicate fault
+                        continue
+                w.color = (0.0, 0.0, 0.0) 
+                
+                # Normal wheel logic
+                dir = np.sign(w.steer - w.joint.angle)
+                val = abs(w.steer - w.joint.angle)
+                w.joint.motorSpeed = dir * min(50.0 * val, 3.0)
+        
+        
+    def l2d_activate_fault(self):
+        self.fault_active = True
+        
+        
+    def l2d_deactivate_fault(self):
+        self.fault_active = False
+
+        
     

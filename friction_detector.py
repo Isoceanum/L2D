@@ -1,7 +1,7 @@
 
 import Box2D
 from Box2D.b2 import contactListener, fixtureDef, polygonShape
-from config import REWARD_FUNCTIONS
+from config import *
     
     
 class FrictionDetector(contactListener):
@@ -38,10 +38,13 @@ class FrictionDetector(contactListener):
             obj.tiles.add(tile)
             if not tile.road_visited:
                 tile.road_visited = True
-                
-                #if REWARD_FUNCTIONS == "baseline":
-                #self.env.reward += 1000.0 / len(self.env.track)
+                            
+                if GIVE_TILE_VISITED_REWARD:
+                    self.env.l2d_tile_reward = MAX_EPISODE_REWARD / len(self.env.track)
+                    #self.env.reward += TILE_VISITED_REWARD / len(self.env.track)
+                    
                 self.env.tile_visited_count += 1
+                self.env.l2d_time_since_last_tile = 0.0
 
                 # Lap is considered completed if enough % of the track was covered
                 if (
