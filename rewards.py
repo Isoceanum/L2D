@@ -44,7 +44,6 @@ def calculate_signed_offset(env) -> float:
             
     return signed_offset
 
-    
 
 def l2d_calculate_step_reward (mode, env, action) -> float:
     match mode:
@@ -861,6 +860,7 @@ def _reward_function_6(env, action) -> float:
 
     return step_reward
     
+# basline
 def _reward_function_7(env, action) -> float:
     step_reward = 0.0
     
@@ -978,7 +978,6 @@ def _reward_function_8(env, action) -> float:
     env.reward += step_reward
 
     return step_reward
-    
 
 # Quadratic
 def _reward_function_9(env, action) -> float:
@@ -1034,7 +1033,6 @@ def _reward_function_10(env, action) -> float:
 
     return step_reward
 
-
 # Cosine-shaped curve
 def _reward_function_11(env, action) -> float:
     step_reward = 0.0
@@ -1062,8 +1060,6 @@ def _reward_function_11(env, action) -> float:
 
     return step_reward
 
-
-
 # Inverse-square
 def _reward_function_12(env, action) -> float:
     step_reward = 0.0
@@ -1090,8 +1086,6 @@ def _reward_function_12(env, action) -> float:
     env.reward += step_reward
 
     return step_reward
-
-
 
 # Qustom
 def _reward_function_13(env, action) -> float:

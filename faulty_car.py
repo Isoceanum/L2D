@@ -124,8 +124,8 @@ class Car:
         
 
         self.particles = []
-        self.target_steer = 0.0  # what the user/agent wants
-        self.prev_steer = 0.0
+                
+        self.steer_target = 0.0
         
         self.fault_active = False
         self.fault_location = self.fault_location = random.randint(0, 3) if FAULT_LOCATION == -1 else FAULT_LOCATION
@@ -170,17 +170,32 @@ class Car:
         """
         
         """Control: set a target steering value"""
-        #self.prev_steer = self.target_steer
-        #self.target_steer = s
         
-        self.wheels[0].steer = s
-        self.wheels[1].steer = s
+        self.steer_target = np.clip(s, -1.0, 1.0)
+        
+        
+        #self.wheels[0].steer = s
+        #self.wheels[1].steer = s
 
     def step(self, dt):    
         self.l2d_cast_rays()  
         self.l2d_inject_fault()
         
         all_wheels_on_grass = True
+        
+        
+        # Smooth steering (inertia)
+        current = self.wheels[0].steer
+        diff = self.steer_target - current
+        max_delta = L2D_STEER_RATE * dt
+        delta = np.clip(diff, -max_delta, max_delta)
+
+        new_steer = current + delta
+        self.wheels[0].steer = new_steer
+        self.wheels[1].steer = new_steer
+        
+        
+        
 
            
  
@@ -192,7 +207,7 @@ class Car:
                 
         x, y = self.hull.position  # Updated position after physics step
         
-        for w in self.wheels:
+        for index, w in enumerate(self.wheels):
             # Steer each wheel
             dir = np.sign(w.steer - w.joint.angle)
             val = abs(w.steer - w.joint.angle)
@@ -220,11 +235,18 @@ class Car:
             # WHEEL_MOMENT_OF_INERTIA*np.square(w.omega)/2 = E -- energy
             # WHEEL_MOMENT_OF_INERTIA*w.omega * domega/dt = dE/dt = W -- power
             # domega = dt*W/WHEEL_MOMENT_OF_INERTIA/w.omega
-
+            
+            
+            torque_scale = 1.0
+            if self.fault_active and index == self.fault_location and FAULT_TYPE == "TORQUE_REDUCTION":
+                torque_scale = 0.3  # or 0.2, tune for severity
+                    
+        
             # add small coef not to divide by zero
             w.omega += (
                 dt
                 * ENGINE_POWER
+                * torque_scale
                 * w.gas
                 / WHEEL_MOMENT_OF_INERTIA
                 / (abs(w.omega) + 5.0)
@@ -420,9 +442,13 @@ class Car:
             "front": 0.0,
             "left_45": math.radians(45),
             "right_45": math.radians(-45),
-            "left_90": math.radians(90),
-            "right_90": math.radians(-90),
         }
+        
+        if not L2D_DISABLE_SIDE_RAYS:
+            ray_angles.update({
+                "left_90": math.radians(90),
+                "right_90": math.radians(-90),
+            })
 
         for label, offset_rad in ray_angles.items():
             # Get rotated direction
@@ -522,6 +548,16 @@ class Car:
                         w.phase = 0.0 # Lock the wheel phase visually
                         w.color = (1.0, 0.0, 0.0)  # Red to indicate fault
                         continue
+                    
+                    elif FAULT_TYPE == "TORQUE_REDUCTION":
+                        w.color = (0.7, 0.3, 0.0)   # Orange for reduced torque
+                        continue
+                    
+                    elif FAULT_TYPE == "STEERING_BIAS":
+                        w.color = (0.0, 0.0, 1.0)  # Blue = steering bias
+                        continue
+                    
+                    
                 w.color = (0.0, 0.0, 0.0) 
                 
                 # Normal wheel logic

@@ -448,7 +448,7 @@ class Learn2Drive(gym.Env, EzPickle):
                 
             if self.l2d_steps_on_grass > FPS * L2D_GRASS_TIMEOUT:
                 terminated = True
-                step_reward -= 100  # strong signal
+                step_reward -= L2D_GRASS_TIMEOUT_PENALTY  # strong signal
                 info["terminated_reason"] = "grass_timeout"
                 
     
@@ -671,11 +671,12 @@ class Learn2Drive(gym.Env, EzPickle):
         obs = []
 
         # 1–5: Ray distances
-        obs.append(self.car.l2d_rays["front"])
-        obs.append(self.car.l2d_rays["left_45"])
-        obs.append(self.car.l2d_rays["right_45"])
-        obs.append(self.car.l2d_rays["left_90"])
-        obs.append(self.car.l2d_rays["right_90"])
+        obs.append(round(self.car.l2d_rays["front"], 0))
+        obs.append(round(self.car.l2d_rays["left_45"], 0))
+        obs.append(round(self.car.l2d_rays["right_45"],0))
+        
+        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else round(self.car.l2d_rays["left_90"],0))
+        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else round(self.car.l2d_rays["right_90"], 0))
 
         # 6: Speed (magnitude of linear velocity)
         speed = np.linalg.norm(self.car.hull.linearVelocity)
