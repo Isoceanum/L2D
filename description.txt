@@ -1,1 +1,1 @@
-identical to 0111 basline but disabled the 90 degree rays and introduced steer inertia to make it slowe to steer using vlaye 2
+New model with 30 deg rays to encurage long term plannign and a max speed of 30

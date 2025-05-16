@@ -23,7 +23,7 @@ def make_friction_perturbation(rng: random.Random) -> Perturbation:
 def make_sensor_noise_perturbation(rng: random.Random) -> Perturbation:
     return SensorNoisePerturbation(
         start_step = rng.randint(200, 300),
-        targets=rng.choice(["front","left_45", "right_45","speed","ang_vel","steering", "gas", "brake"]),
+        targets=rng.choice(["front","left", "right","speed","ang_vel","steering", "gas", "brake"]),
         noise_std = rng.uniform(0.3, 1.0)
     )
     

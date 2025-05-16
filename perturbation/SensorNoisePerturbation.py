@@ -4,8 +4,8 @@ import numpy as np
 
 OBS_INDEX_MAP = {
     "front": 0,
-    "left_45": 1,
-    "right_45": 2,
+    "left": 1,
+    "right": 2,
     "speed": 3,
     "ang_vel": 4,
     "steering": 5,

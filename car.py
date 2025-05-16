@@ -128,10 +128,9 @@ class Car:
 
         self.l2d_rays = {
             "front": 0.0,
-            "left_45": 0.0,
-            "right_45": 0.0,
-            "left_90": 0.0,
-            "right_90": 0.0,
+            "left": 0.0,
+            "right": 0.0,
+
         }
 
     def gas(self, gas):
@@ -140,6 +139,14 @@ class Car:
         Args:
             gas (float): How much gas gets applied. Gets clipped between 0 and 1.
         """
+        
+        v = self.hull.linearVelocity
+        speed = np.linalg.norm([v[0], v[1]])
+        if speed > L2D_MAX_CAR_SPEED * 0.8:
+            # Start scaling down near 80% of max speed
+            gas_scale = np.clip((L2D_MAX_CAR_SPEED - speed) / (L2D_MAX_CAR_SPEED * 0.1), 0.0, 1.0)
+            gas *= gas_scale
+            
         gas = np.clip(gas, 0, 1)
         for w in self.wheels[2:4]:
             diff = gas - w.gas
@@ -271,12 +278,13 @@ class Car:
                 True,
             )
             
+
         
             # Apply passive friction to the car hull if no gas is applied (simulates coasting drag)
             if all(w.gas < 1e-4 for w in self.wheels[2:4]):  # rear wheels = driven
                 drag_force = -5.0 * np.array(self.hull.linearVelocity)
                 self.hull.ApplyForceToCenter(drag_force, wake=True)   
-                
+                                
         self.outside_track = all_wheels_on_grass
 
  
@@ -401,15 +409,9 @@ class Car:
         # Define angles (in radians)
         ray_angles = {
             "front": 0.0,
-            "left_45": math.radians(30),
-            "right_45": math.radians(-30),
+            "left": math.radians(L2D_SIDE_RAY_ANGLE),
+            "right": math.radians(-L2D_SIDE_RAY_ANGLE),
         }
-        
-        if not L2D_DISABLE_SIDE_RAYS:
-            ray_angles.update({
-                "left_90": math.radians(90),
-                "right_90": math.radians(-90),
-            })
 
         for label, offset_rad in ray_angles.items():
             # Get rotated direction
@@ -453,10 +455,8 @@ class Car:
         # Define angles (in radians)
         ray_angles = {
             "front": 0.0,
-            "left_45": math.radians(45),
-            "right_45": math.radians(-45),
-            "left_90": math.radians(90),
-            "right_90": math.radians(-90),
+            "left": math.radians(L2D_SIDE_RAY_ANGLE),
+            "right": math.radians(-L2D_SIDE_RAY_ANGLE)
         }
 
         for label, offset_rad in ray_angles.items():

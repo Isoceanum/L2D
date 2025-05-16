@@ -615,10 +615,8 @@ class Learn2Drive(gym.Env, EzPickle):
 
         signal_names = [
             "ray_front",
-            "ray_l_45",
-            "ray_r_45", 
-            "ray_l_90",
-            "ray_r_90",
+            "ray_left",
+            "ray_right", 
             "speed", 
             "ang_vel",
             "steer", 
@@ -627,8 +625,8 @@ class Learn2Drive(gym.Env, EzPickle):
         ]
 
         # Logical grouping
-        rays = signal_names[0:5]
-        controls = signal_names[5:L2D_OBSERVATION_SIZE]
+        rays = signal_names[0:3]
+        controls = signal_names[3:L2D_OBSERVATION_SIZE]
 
         # Column x-positions
         col_rays = W - 360
@@ -644,7 +642,7 @@ class Learn2Drive(gym.Env, EzPickle):
             self.surf.blit(label, (col_rays, start_y + i * spacing))
 
         for i, name in enumerate(controls):
-            value = obs[i + 5]
+            value = obs[i + 3]
             label = font.render(f"{name}: {value:.2f}", True, (255, 255, 255))
             self.surf.blit(label, (col_ctrl, start_y + i * spacing))
             
@@ -665,11 +663,9 @@ class Learn2Drive(gym.Env, EzPickle):
 
         # 1–5: Ray distances
         obs.append(self.car.l2d_rays["front"])
-        obs.append(self.car.l2d_rays["left_45"])
-        obs.append(self.car.l2d_rays["right_45"])
+        obs.append(self.car.l2d_rays["left"])
+        obs.append(self.car.l2d_rays["right"])
         
-        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else self.car.l2d_rays["left_90"])
-        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else self.car.l2d_rays["right_90"])
 
         # 6: Speed (magnitude of linear velocity)
         speed = np.linalg.norm(self.car.hull.linearVelocity)
