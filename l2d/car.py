@@ -16,9 +16,8 @@ import numpy as np
 from gymnasium.error import DependencyNotInstalled
 
 from config import *
-from ray_cast_callback import RayCastCallback
-
-from constants import *
+from l2d.ray_cast_callback import RayCastCallback
+from l2d.constants import *
 
 try:
     from Box2D.b2 import fixtureDef, polygonShape, revoluteJointDef, circleShape

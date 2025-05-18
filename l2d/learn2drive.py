@@ -9,14 +9,14 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from car import Car
 from gymnasium.error import DependencyNotInstalled, InvalidAction
 from gymnasium.utils import EzPickle
 
-from rewards import l2d_calculate_step_reward
-from constants import *
+from l2d.car import Car
+from l2d.rewards import l2d_calculate_step_reward
+from l2d.constants import *
 from config import *
-from friction_detector import FrictionDetector
+from l2d.friction_detector import FrictionDetector
 
 
 try:

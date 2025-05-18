@@ -56,7 +56,7 @@ def make_torque_jitter_perturbation(rng: random.Random) -> Perturbation:
 def make_wheel_lock_perturbation(rng: random.Random) -> Perturbation:
     return WheelLockPerturbation(
         start_step = rng.randint(200, 300),
-        omega_scale = rng.uniform(0.2, 0.6),
+        omega_scale = rng.uniform(0.7, 0.9),
         wheel_idx = rng.choice([0, 1, 2, 3])
     )
     
@@ -105,3 +105,21 @@ def generate_evaluation_pool() -> list[Perturbation]:
         WheelLockPerturbation(start_step=200, omega_scale=0.3, wheel_idx=1),
         SensorNoisePerturbation(start_step=200, targets="front", noise_std=0.8),
         ]
+
+
+
+def generate_training_pool_v1(rng: random.Random, size) -> list[Perturbation]:
+    """
+    Generates a pool of perturbations for training.
+    
+    Args:
+        rng (random.Random): Random number generator for reproducibility.
+        size (int): Number of perturbations to generate.
+        
+    Returns:
+        list[Perturbation]: List of generated perturbations.
+    """
+    perturbations = []
+    for _ in range(size):
+        perturbations.append(make_wheel_lock_perturbation(rng))
+    return perturbations

@@ -1,9 +1,8 @@
 
 import numpy as np
 
-from constants import * 
 from config import *
-
+from l2d.constants import *
     
 def calculate_signed_offset(env) -> float:
     car_pos = np.array(env.car.hull.position)
