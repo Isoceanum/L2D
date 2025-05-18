@@ -1,60 +1,54 @@
+# main.py
+
 import os
-import time
-import argparse
-import gymnasium as gym
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.evaluation import evaluate_policy
+from train import train_baseline, utils
 
-from config import *
+from evaluate import evaluate_model
 
-# Register your custom vectorized env
-gym.envs.registration.register(
-    id="L2D-v0",
-    entry_point="learn2drive:Learn2Drive",
-    max_episode_steps=MAX_EPISODE_STEPS,
-    reward_threshold=900,
-)
 
-# --- CLI args ---
-parser = argparse.ArgumentParser()
-parser.add_argument("--output_dir", type=str, required=True)
-args = parser.parse_args()
+def baseline_nominal():
+    cwd = os.getcwd()  # e.g., /.../phase_1/code
+    root_dir = os.path.dirname(cwd)  # one level up → /.../phase_1
+    outputs_dir = os.path.join(root_dir, "outputs")  # → /.../phase_1/outputs
+    run_dir = utils.create_output_dir(outputs_dir, method="ppo", variant="nominal")
+    
+    train_baseline.run_nominal(run_dir)
 
-# --- Ensure output dir exists ---
-os.makedirs(args.output_dir, exist_ok=True)
+def baseline_perturbation():
+    cwd = os.getcwd()  # e.g., /.../phase_1/code
+    root_dir = os.path.dirname(cwd)  # one level up → /.../phase_1
+    outputs_dir = os.path.join(root_dir, "outputs")  # → /.../phase_1/outputs
+    run_dir = utils.create_output_dir(outputs_dir, method="ppo", variant="perturbation")
+    
+    train_baseline.run_perturbation(run_dir)
 
-# --- Create vectorized env ---
-env = make_vec_env(
-	"L2D-v0",
-	n_envs=1, # Use 1 env for now to debug behavior
-)
+def eval():
+    cwd = os.getcwd()
+    root_dir = os.path.dirname(cwd)
+    outputs_dir = os.path.join(root_dir, "outputs")
 
-# --- Set up PPO model for vector obs ---
-model = PPO(
-    policy="MlpPolicy",
-    env=env,
-    verbose=1,
-    n_steps=1024,
-    batch_size=256,
-    device="cuda",  # Will fall back to CPU if not available
-    tensorboard_log=args.output_dir,
-)
+    # Point to the specific run you want to evaluate
+    method = "ppo"
+    variant = "nominal" # "perturbation" "nominal"
+    run_id = "000000"
 
-print(f"🚀 Using device: {model.device}")
+    run_dir = os.path.join(outputs_dir, method, variant, run_id)
+    model_path = os.path.join(run_dir, "model.zip")
+    output_csv = os.path.join(run_dir, "eval_summary.csv")
 
-# --- Train ---
-start = time.time()
-model.learn(total_timesteps=TIMESTEPS, progress_bar=True)
-elapsed = time.time() - start
+    # Evaluate
+    evaluate_model.evaluate(model_path, output_csv, n_episodes=100)
+    
+def nagabandi():
+    pass
 
-# --- Save model ---
-model_path = os.path.join(args.output_dir, "model")
-model.save(model_path)
+    
+def main():
+    #baseline_nominal()
+    #baseline_perturbation()
+    #eval()
+    nagabandi()
 
-# --- Evaluate ---
-mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5)
-print("✅ Training complete.")
-print(f"⏱️  Training time: {time.strftime('%H:%M:%S', time.gmtime(elapsed))}")
-print(f"📈 Mean reward: {mean_reward:.1f} ± {std_reward:.1f}")
-print(f"💾 Saved to: {model_path}")
+    
+if __name__ == "__main__":
+    main()

@@ -16,9 +16,8 @@ import numpy as np
 from gymnasium.error import DependencyNotInstalled
 
 from config import *
-from ray_cast_callback import RayCastCallback
-
-from constants import *
+from l2d.ray_cast_callback import RayCastCallback
+from l2d.constants import *
 
 try:
     from Box2D.b2 import fixtureDef, polygonShape, revoluteJointDef, circleShape
@@ -124,20 +123,13 @@ class Car:
         
 
         self.particles = []
-                
-        self.steer_target = 0.0
-        
-        self.fault_active = False
-        self.fault_location = self.fault_location = random.randint(0, 3) if FAULT_LOCATION == -1 else FAULT_LOCATION
-        
         self.outside_track = False  # True when all wheels are on grass
 
         self.l2d_rays = {
             "front": 0.0,
-            "left_45": 0.0,
-            "right_45": 0.0,
-            "left_90": 0.0,
-            "right_90": 0.0,
+            "left": 0.0,
+            "right": 0.0,
+
         }
 
     def gas(self, gas):
@@ -146,6 +138,14 @@ class Car:
         Args:
             gas (float): How much gas gets applied. Gets clipped between 0 and 1.
         """
+        
+        v = self.hull.linearVelocity
+        speed = np.linalg.norm([v[0], v[1]])
+        if speed > L2D_MAX_CAR_SPEED * 0.8:
+            # Start scaling down near 80% of max speed
+            gas_scale = np.clip((L2D_MAX_CAR_SPEED - speed) / (L2D_MAX_CAR_SPEED * 0.1), 0.0, 1.0)
+            gas *= gas_scale
+            
         gas = np.clip(gas, 0, 1)
         for w in self.wheels[2:4]:
             diff = gas - w.gas
@@ -168,42 +168,14 @@ class Car:
         Args:
             s (-1..1): target position, it takes time to rotate steering wheel from side-to-side
         """
-        
-        """Control: set a target steering value"""
-        
-        self.steer_target = np.clip(s, -1.0, 1.0)
-        
-        
-        #self.wheels[0].steer = s
-        #self.wheels[1].steer = s
+                
+        self.wheels[0].steer = s
+        self.wheels[1].steer = s
 
     def step(self, dt):    
-        self.l2d_cast_rays()  
-        self.l2d_inject_fault()
-        
+        self.l2d_cast_rays()          
         all_wheels_on_grass = True
-        
-        
-        # Smooth steering (inertia)
-        current = self.wheels[0].steer
-        diff = self.steer_target - current
-        max_delta = L2D_STEER_RATE * dt
-        delta = np.clip(diff, -max_delta, max_delta)
 
-        new_steer = current + delta
-        self.wheels[0].steer = new_steer
-        self.wheels[1].steer = new_steer
-        
-        
-        
-
-           
- 
-        """         
-        for i, w in enumerate(self.wheels):
-            if i in [0, 1]:  # Only front wheels should steer
-                delta = self.target_steer - w.steer
-                w.steer += np.clip(delta, -STEERING_INERTIA * dt, STEERING_INERTIA * dt) """
                 
         x, y = self.hull.position  # Updated position after physics step
         
@@ -235,18 +207,11 @@ class Car:
             # WHEEL_MOMENT_OF_INERTIA*np.square(w.omega)/2 = E -- energy
             # WHEEL_MOMENT_OF_INERTIA*w.omega * domega/dt = dE/dt = W -- power
             # domega = dt*W/WHEEL_MOMENT_OF_INERTIA/w.omega
-            
-            
-            torque_scale = 1.0
-            if self.fault_active and index == self.fault_location and FAULT_TYPE == "TORQUE_REDUCTION":
-                torque_scale = 0.3  # or 0.2, tune for severity
-                    
         
             # add small coef not to divide by zero
             w.omega += (
                 dt
                 * ENGINE_POWER
-                * torque_scale
                 * w.gas
                 / WHEEL_MOMENT_OF_INERTIA
                 / (abs(w.omega) + 5.0)
@@ -311,11 +276,14 @@ class Car:
                 ),
                 True,
             )
+            
+
+        
             # Apply passive friction to the car hull if no gas is applied (simulates coasting drag)
             if all(w.gas < 1e-4 for w in self.wheels[2:4]):  # rear wheels = driven
-                drag_force = -1.0 * np.array(self.hull.linearVelocity)
+                drag_force = -5.0 * np.array(self.hull.linearVelocity)
                 self.hull.ApplyForceToCenter(drag_force, wake=True)   
-                
+                                
         self.outside_track = all_wheels_on_grass
 
  
@@ -440,15 +408,9 @@ class Car:
         # Define angles (in radians)
         ray_angles = {
             "front": 0.0,
-            "left_45": math.radians(45),
-            "right_45": math.radians(-45),
+            "left": math.radians(L2D_SIDE_RAY_ANGLE),
+            "right": math.radians(-L2D_SIDE_RAY_ANGLE),
         }
-        
-        if not L2D_DISABLE_SIDE_RAYS:
-            ray_angles.update({
-                "left_90": math.radians(90),
-                "right_90": math.radians(-90),
-            })
 
         for label, offset_rad in ray_angles.items():
             # Get rotated direction
@@ -492,10 +454,8 @@ class Car:
         # Define angles (in radians)
         ray_angles = {
             "front": 0.0,
-            "left_45": math.radians(45),
-            "right_45": math.radians(-45),
-            "left_90": math.radians(90),
-            "right_90": math.radians(-90),
+            "left": math.radians(L2D_SIDE_RAY_ANGLE),
+            "right": math.radians(-L2D_SIDE_RAY_ANGLE)
         }
 
         for label, offset_rad in ray_angles.items():
@@ -539,39 +499,4 @@ class Car:
     def l2d_normalize_direction(self, direction):
         length = math.sqrt(direction[0]**2 + direction[1]**2)
         return (direction[0] / length, direction[1] / length) if length != 0 else (0, 0)
-    
-    def l2d_inject_fault(self):   
-            for i, w in enumerate(self.wheels):
-                if self.fault_active and i == self.fault_location:
-                    if FAULT_TYPE == "LOCK":
-                        w.omega *= 0.1 # Simulate a locked wheel by reducing its angular velocity
-                        w.phase = 0.0 # Lock the wheel phase visually
-                        w.color = (1.0, 0.0, 0.0)  # Red to indicate fault
-                        continue
-                    
-                    elif FAULT_TYPE == "TORQUE_REDUCTION":
-                        w.color = (0.7, 0.3, 0.0)   # Orange for reduced torque
-                        continue
-                    
-                    elif FAULT_TYPE == "STEERING_BIAS":
-                        w.color = (0.0, 0.0, 1.0)  # Blue = steering bias
-                        continue
-                    
-                    
-                w.color = (0.0, 0.0, 0.0) 
-                
-                # Normal wheel logic
-                dir = np.sign(w.steer - w.joint.angle)
-                val = abs(w.steer - w.joint.angle)
-                w.joint.motorSpeed = dir * min(50.0 * val, 3.0)
-        
-        
-    def l2d_activate_fault(self):
-        self.fault_active = True
-        
-        
-    def l2d_deactivate_fault(self):
-        self.fault_active = False
-
-        
     

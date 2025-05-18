@@ -1,11 +1,9 @@
 
 import numpy as np
 
-from constants import * 
 from config import *
-
+from l2d.constants import *
     
- 
 def calculate_signed_offset(env) -> float:
     car_pos = np.array(env.car.hull.position)
     car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
@@ -44,11 +42,12 @@ def calculate_signed_offset(env) -> float:
             
     return signed_offset
 
-
 def l2d_calculate_step_reward (mode, env, action) -> float:
     match mode:
         case "baseline":
             return _reward_baseline(env, action)
+        case "GOAT":
+            return _reward_function_goat(env, action)
         case "center_track_alignment":
             return _reward_center_track_alignment(env, action)
         case "wall_avoidance":
@@ -75,12 +74,8 @@ def l2d_calculate_step_reward (mode, env, action) -> float:
             return _reward_function_5(env, action)
         case "6":
             return _reward_function_6(env, action)
-        case "7":
-            return _reward_function_7(env, action)
         case "8":
             return _reward_function_8(env, action) 
-        
-        # todo test
         case "9":
             return _reward_function_9(env, action)
         case "10":
@@ -91,11 +86,10 @@ def l2d_calculate_step_reward (mode, env, action) -> float:
             return _reward_function_12(env, action)
         case "13":
             return _reward_function_13(env, action)
-        case "14":
-            return _reward_function_14(env, action)
         case _:
             raise ValueError(f"Unknown reward function named: {mode}")
 
+# baseline
 def _reward_baseline(env, action) -> float:
     if action is None:
         return 0.0
@@ -109,6 +103,65 @@ def _reward_baseline(env, action) -> float:
     env.prev_reward = env.reward
     return step_reward
 
+# GOATED 
+def _reward_function_goat(env, action) -> float:
+    step_reward = 0.0
+    
+    # Time penalty    
+    step_reward -= L2D_TIME_PENALTY
+    
+    car_pos = np.array(env.car.hull.position)
+    car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
+    car_right = np.array([-car_heading[1], car_heading[0]])  # 90 degrees to the right
+
+    min_distance = float("inf")
+    signed_offset = 0.0
+    
+    idx0 = env.l2d_last_segment_idx
+    window = 5  # try segments 4 from last closest
+    
+    min_i = max(1, idx0 - window)
+    max_i = min(len(env.track), idx0 + window)
+
+    for i in range(min_i, max_i):
+        x1, y1 = env.track[i - 1][2:4]
+        x2, y2 = env.track[i][2:4]
+        a = np.array([x1, y1])
+        b = np.array([x2, y2])
+        ab = b - a
+        ap = car_pos - a
+
+        ab_len_squared = np.dot(ab, ab)
+        if ab_len_squared == 0:
+            continue
+
+        t = np.clip(np.dot(ap, ab) / ab_len_squared, 0.0, 1.0)
+        closest_point = a + t * ab
+        diff = car_pos - closest_point
+        dist = np.linalg.norm(diff)
+
+        if dist < min_distance:
+            min_distance = dist
+            signed_offset = np.dot(diff, car_right)  # positive if to the right 
+            env.l2d_last_segment_idx = i  # update the cache
+    
+    # signed_offset 5,  0,  -5
+    TRACK_EDGE_OFFSET = 5.0  # max distance from center
+    scaled_center_value = 1.0 - abs(signed_offset) / TRACK_EDGE_OFFSET
+    scaled_center_value = np.clip(scaled_center_value, 0.0, 1.0)
+    
+    if env.car.outside_track:
+        step_reward -= L2D_OFF_TRACK_PENALTY
+    
+    step_reward += scaled_center_value * env.l2d_tile_reward
+    env.l2d_tile_reward = 0.0
+    
+    #update global reward
+    env.reward += step_reward
+
+    return step_reward
+    
+# Experimental reward functions
 def _reward_center_track_alignment(env, action) -> float:
     if action is None:
         return 0.0
@@ -851,64 +904,6 @@ def _reward_function_6(env, action) -> float:
     TRACK_EDGE_OFFSET = 5.0  # max distance from center
     scaled_center_value = 1.0 - abs(signed_offset) / TRACK_EDGE_OFFSET
     scaled_center_value = np.clip(scaled_center_value, 0.0, 1.0)
-    
-    step_reward += scaled_center_value * env.l2d_tile_reward
-    env.l2d_tile_reward = 0.0
-    
-    #update global reward
-    env.reward += step_reward
-
-    return step_reward
-    
-# basline
-def _reward_function_7(env, action) -> float:
-    step_reward = 0.0
-    
-    # Time penalty    
-    step_reward -= L2D_TIME_PENALTY
-    
-    car_pos = np.array(env.car.hull.position)
-    car_heading = env.car.hull.GetWorldVector((0, 1))  # car's forward direction
-    car_right = np.array([-car_heading[1], car_heading[0]])  # 90 degrees to the right
-
-    min_distance = float("inf")
-    signed_offset = 0.0
-    
-    idx0 = env.l2d_last_segment_idx
-    window = 5  # try segments 4 from last closest
-    
-    min_i = max(1, idx0 - window)
-    max_i = min(len(env.track), idx0 + window)
-
-    for i in range(min_i, max_i):
-        x1, y1 = env.track[i - 1][2:4]
-        x2, y2 = env.track[i][2:4]
-        a = np.array([x1, y1])
-        b = np.array([x2, y2])
-        ab = b - a
-        ap = car_pos - a
-
-        ab_len_squared = np.dot(ab, ab)
-        if ab_len_squared == 0:
-            continue
-
-        t = np.clip(np.dot(ap, ab) / ab_len_squared, 0.0, 1.0)
-        closest_point = a + t * ab
-        diff = car_pos - closest_point
-        dist = np.linalg.norm(diff)
-
-        if dist < min_distance:
-            min_distance = dist
-            signed_offset = np.dot(diff, car_right)  # positive if to the right 
-            env.l2d_last_segment_idx = i  # update the cache
-    
-    # signed_offset 5,  0,  -5
-    TRACK_EDGE_OFFSET = 5.0  # max distance from center
-    scaled_center_value = 1.0 - abs(signed_offset) / TRACK_EDGE_OFFSET
-    scaled_center_value = np.clip(scaled_center_value, 0.0, 1.0)
-    
-    if env.car.outside_track:
-        step_reward -= L2D_OFF_TRACK_PENALTY
     
     step_reward += scaled_center_value * env.l2d_tile_reward
     env.l2d_tile_reward = 0.0

@@ -9,14 +9,14 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from faulty_car import Car
 from gymnasium.error import DependencyNotInstalled, InvalidAction
 from gymnasium.utils import EzPickle
 
-from rewards import l2d_calculate_step_reward
-from constants import *
+from l2d.car import Car
+from l2d.rewards import l2d_calculate_step_reward
+from l2d.constants import *
 from config import *
-from friction_detector import FrictionDetector
+from l2d.friction_detector import FrictionDetector
 
 
 try:
@@ -95,16 +95,14 @@ class Learn2Drive(gym.Env, EzPickle):
         
         # values used for fault injection
         self.l2d_step_count = 0
-        self.l2d_inject_fault = random.random() < FAULT_PROBABILITY
-        self.fault_step = random.randint(*FAULT_STEP_RANGE) if self.l2d_inject_fault else None
-        self.l2d_fault_active = False
-        self.l2d_fault_location = None
         
         self.l2d_tile_reward = 0.0
         self.l2d_steps_on_grass = 0
         
-
-
+        self.l2d_perturbation_step = None
+        self.l2d_observation_filter = None
+        self.l2d_active_perturbation = None
+    
         # This will throw a warning in tests/envs/test_envs in utils/env_checker.py as the space is not symmetric
         #   or normalised however this is not possible here so ignore
         if self.continuous:
@@ -346,12 +344,11 @@ class Learn2Drive(gym.Env, EzPickle):
             
         # values used for fault injection
         self.l2d_step_count = 0
-        self.l2d_inject_fault = random.random() < FAULT_PROBABILITY
-        self.fault_step = random.randint(*FAULT_STEP_RANGE) if self.l2d_inject_fault else None
-        self.l2d_fault_active = False
-        self.l2d_fault_location = None
         self.l2d_steps_on_grass = 0
         self.l2d_last_segment_idx = 0
+        self.l2d_perturbation_step = None
+        self.l2d_observation_filter = None
+        self.l2d_active_perturbation = None
         
         if self.domain_randomize:
             randomize = True
@@ -378,33 +375,22 @@ class Learn2Drive(gym.Env, EzPickle):
         return self.step(None)[0], {}
 
     def step(self, action: Union[np.ndarray, int]):
+        # Apply any perturbation logic injected by a wrapper
+        if hasattr(self, "l2d_perturbation_step") and callable(self.l2d_perturbation_step):
+            self.l2d_perturbation_step()
+    
         self.l2d_step_count += 1
-        
-        assert self.car is not None
-        
-        if self.fault_step is not None and self.fault_step <= self.l2d_step_count < self.fault_step + FAULT_DURATION:
-            self.l2d_fault_active = True
-            self.car.l2d_activate_fault()
-        else:
-            self.l2d_fault_active = False
-            self.car.l2d_deactivate_fault()
-            
+        assert self.car is not None            
             
         if self.car.outside_track:
             self.l2d_steps_on_grass += 1
         else:
             self.l2d_steps_on_grass = 0
             
-            
         if action is not None:
             if self.continuous:
                 action = action.astype(np.float64)
-                self.car.steer(-action[0])
-                
-                if THROTTLE_BRAKE_RATIO is not None:
-                    action[1] = 0.1
-                    action[2] = 0.1 * THROTTLE_BRAKE_RATIO
-                
+                self.car.steer(-action[0])                
                 self.car.gas(action[1])
                 self.car.brake(action[2])
                 
@@ -434,7 +420,6 @@ class Learn2Drive(gym.Env, EzPickle):
         
         if action is not None:  # First step without action, called from reset() 
                            
-
             #step_reward = self.reward - self.prev_reward
             #self.prev_reward = self.reward
             if self.tile_visited_count == len(self.track) or self.new_lap:
@@ -450,7 +435,6 @@ class Learn2Drive(gym.Env, EzPickle):
                 terminated = True
                 step_reward -= L2D_GRASS_TIMEOUT_PENALTY  # strong signal
                 info["terminated_reason"] = "grass_timeout"
-                
     
         if self.render_mode == "human":
             self.render()
@@ -510,13 +494,24 @@ class Learn2Drive(gym.Env, EzPickle):
 
         # showing stats
         self.l2d_render_indicators(WINDOW_W, WINDOW_H)
+        
+        
+        # Smaller font for status
+        font_small = pygame.font.Font(pygame.font.get_default_font(), 30)
 
-        font = pygame.font.Font(pygame.font.get_default_font(), 42)
-        text = font.render("%04i" % self.reward, True, (255, 255, 255), (0, 0, 0))
-        text_rect = text.get_rect()
-        text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
-        self.surf.blit(text, text_rect)
+        # Reward display (with label)
+        reward_text = font_small.render(f"reward: {int(self.reward):+04d}", True, (255, 255, 255), (0, 0, 0))
+        reward_rect = reward_text.get_rect()
+        reward_rect.topleft = (10, WINDOW_H - 30)
+        self.surf.blit(reward_text, reward_rect)
 
+        # Step counter display (aligned to right of reward)
+        step_text = font_small.render(f"step: {self.l2d_step_count}", True, (255, 255, 255), (0, 0, 0))
+        step_rect = step_text.get_rect()
+        step_rect.topleft = (reward_rect.right + 20, reward_rect.top)
+        self.surf.blit(step_text, step_rect)
+                
+        
         if mode == "human":
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
@@ -613,31 +608,15 @@ class Learn2Drive(gym.Env, EzPickle):
         color = (0, 0, 0)
         polygon = [(W, H), (W, H - 5 * h), (0, H - 5 * h), (0, H)]
         pygame.draw.polygon(self.surf, color=color, points=polygon)
-        
-        if self.l2d_fault_active:
-            location_names = {
-                0: "FRONT_LEFT",
-                1: "FRONT_RIGHT",
-                2: "BACK_LEFT",
-                3: "BACK_RIGHT",
-            }
-            
-            location_name = location_names.get(self.car.fault_location, "UNKNOWN")
-            fault_font = pygame.font.SysFont("Courier", 16, bold=True)
-            fault_text = f"FAULT: {FAULT_TYPE} | loc={location_name} | range={FAULT_STEP_RANGE}"
-            fault_label = fault_font.render(fault_text, True, (255, 100, 100))  # light red
-            self.surf.blit(fault_label, (10, H - 30))  # bottom-left corner
-            
+                    
         # Draw labeled observation vector (3 logical columns)
         font = pygame.font.SysFont("Courier", 16)
         obs = self.l2d_get_observation()
 
         signal_names = [
             "ray_front",
-            "ray_l_45",
-            "ray_r_45", 
-            "ray_l_90",
-            "ray_r_90",
+            "ray_left",
+            "ray_right", 
             "speed", 
             "ang_vel",
             "steer", 
@@ -646,8 +625,8 @@ class Learn2Drive(gym.Env, EzPickle):
         ]
 
         # Logical grouping
-        rays = signal_names[0:5]
-        controls = signal_names[5:L2D_OBSERVATION_SIZE]
+        rays = signal_names[0:3]
+        controls = signal_names[3:L2D_OBSERVATION_SIZE]
 
         # Column x-positions
         col_rays = W - 360
@@ -663,20 +642,30 @@ class Learn2Drive(gym.Env, EzPickle):
             self.surf.blit(label, (col_rays, start_y + i * spacing))
 
         for i, name in enumerate(controls):
-            value = obs[i + 5]
+            value = obs[i + 3]
             label = font.render(f"{name}: {value:.2f}", True, (255, 255, 255))
             self.surf.blit(label, (col_ctrl, start_y + i * spacing))
+            
+            
+        # --- Show active perturbation info ---
+        active = getattr(self, "l2d_active_perturbation", None)
+        if active and active.active and not active.is_expired(self.l2d_step_count):
+            font = pygame.font.SysFont("Courier", 13)
+            label = font.render(str(active), True, (255, 255, 0))
+            self.surf.blit(label, (10, start_y))
+                    
+            
+            
+        
 
     def l2d_get_observation(self):
         obs = []
 
         # 1–5: Ray distances
-        obs.append(round(self.car.l2d_rays["front"], 0))
-        obs.append(round(self.car.l2d_rays["left_45"], 0))
-        obs.append(round(self.car.l2d_rays["right_45"],0))
+        obs.append(self.car.l2d_rays["front"])
+        obs.append(self.car.l2d_rays["left"])
+        obs.append(self.car.l2d_rays["right"])
         
-        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else round(self.car.l2d_rays["left_90"],0))
-        obs.append(0.0 if L2D_DISABLE_SIDE_RAYS else round(self.car.l2d_rays["right_90"], 0))
 
         # 6: Speed (magnitude of linear velocity)
         speed = np.linalg.norm(self.car.hull.linearVelocity)
@@ -693,6 +682,9 @@ class Learn2Drive(gym.Env, EzPickle):
 
         # 10: Brake input
         obs.append(self.car.wheels[2].brake)
+        
+        if self.l2d_observation_filter:
+            obs = self.l2d_observation_filter(obs)
 
         return np.array(obs, dtype=np.float32)  
 

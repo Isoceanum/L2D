@@ -1,5 +1,5 @@
 import Box2D
-from constants import L2D_CATEGORY_WALL
+from l2d.constants import L2D_CATEGORY_WALL
 
 class RayCastCallback(Box2D.b2RayCastCallback):
     def __init__(self, max_length):
