@@ -1,6 +1,5 @@
 
 import numpy as np
-
 from config import *
 from l2d.constants import *
     
