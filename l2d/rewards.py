@@ -88,6 +88,23 @@ def l2d_calculate_step_reward (mode, env, action) -> float:
         case _:
             raise ValueError(f"Unknown reward function named: {mode}")
 
+def _model_based_reward_fn(env, action) -> float:
+    obs = env.state 
+    
+    ray_front = obs[0]
+    ray_left = obs[1]
+    ray_right = obs[2]
+    speed = obs[3]
+    angular_velocity = obs[4]
+    steering_angle = obs[5]
+    gas = obs[6]
+    brake = obs[7]
+    
+    
+    
+    print(obs)
+    pass
+
 # baseline
 def _reward_baseline(env, action) -> float:
     if action is None:

@@ -656,8 +656,6 @@ class Learn2Drive(gym.Env, EzPickle):
                     
             
             
-        
-
     def l2d_get_observation(self):
         obs = []
 
